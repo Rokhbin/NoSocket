@@ -2,7 +2,7 @@
 
 ## Reporting
 
-Do not open public issues for vulnerabilities. Email `security@nosocket.dev` with reproduction details and affected versions. Maintainers aim to acknowledge reports within seven days.
+Do not open public issues for vulnerabilities. Email `rokhbin@live.com` with reproduction details and affected versions. Maintainers aim to acknowledge reports within seven days.
 
 ## Model
 
