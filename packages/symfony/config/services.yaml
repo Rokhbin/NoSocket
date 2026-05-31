@@ -1,0 +1,22 @@
+services:
+  NoSocket\Config: ~
+  nosocket.pdo:
+    class: PDO
+    factory: ['NoSocket\Symfony\PdoFactory', 'fromDoctrine']
+    arguments: ['@doctrine.dbal.default_connection']
+  NoSocket\Store\PdoEventStore:
+    arguments: ['@nosocket.pdo']
+  NoSocket\RateLimit\PdoRateLimiter:
+    arguments: ['@nosocket.pdo']
+  NoSocket\Auth\SubscriptionSigner:
+    arguments: ['%env(NOSOCKET_SECRET)%']
+  NoSocket\NoSocket:
+    arguments: ['@NoSocket\Store\PdoEventStore', '@NoSocket\Config']
+  NoSocket\Http\PollService:
+    arguments:
+      - '@NoSocket\Store\PdoEventStore'
+      - '@NoSocket\Auth\SubscriptionSigner'
+      - '@NoSocket\RateLimit\PdoRateLimiter'
+      - '@NoSocket\Config'
+  NoSocket\Symfony\Http\PollController:
+    tags: ['controller.service_arguments']

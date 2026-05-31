@@ -1,0 +1,16 @@
+{
+  "name": "@nosocket/client",
+  "version": "0.2.0",
+  "description": "Browser client for NoSocket: realtime for shared hosting.",
+  "license": "MIT",
+  "type": "module",
+  "main": "assets/js/nosocket.js",
+  "exports": "./assets/js/nosocket.js",
+  "scripts": {
+    "test": "node --test tests/js/*.test.js",
+    "test:e2e": "playwright test"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.52.0"
+  }
+}

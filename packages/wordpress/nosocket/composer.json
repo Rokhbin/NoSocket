@@ -1,0 +1,10 @@
+{
+    "name": "nosocket/wordpress",
+    "description": "WordPress plugin for NoSocket.",
+    "type": "wordpress-plugin",
+    "license": "MIT",
+    "require": {
+        "php": "^8.1",
+        "nosocket/nosocket": "^0.2"
+    }
+}

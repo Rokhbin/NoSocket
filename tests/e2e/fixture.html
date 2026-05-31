@@ -1,0 +1,22 @@
+<!doctype html>
+<meta charset="utf-8">
+<script type="module">
+  if (new URL(location.href).searchParams.has("fallback")) {
+    window.BroadcastChannel = undefined;
+    Object.defineProperty(navigator, "locks", { value: undefined });
+  }
+  const { createNoSocket } = await import("/assets/js/nosocket.js");
+  window.client = createNoSocket({
+    endpoint: "/poll-mock",
+    token: "opaque",
+    namespace: new URL(location.href).searchParams.get("namespace"),
+    normalInterval: 100,
+    activeInterval: 100,
+    burstInterval: 100,
+    heartbeatInterval: 40,
+    leaseDuration: 150,
+    jitterRatio: 0,
+  });
+  window.client.subscribe("orders");
+  window.client.start();
+</script>

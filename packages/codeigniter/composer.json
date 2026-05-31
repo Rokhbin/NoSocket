@@ -1,0 +1,15 @@
+{
+    "name": "nosocket/codeigniter4",
+    "description": "CodeIgniter 4 adapter for NoSocket.",
+    "license": "MIT",
+    "require": {
+        "php": "^8.1",
+        "codeigniter4/framework": "^4.4",
+        "nosocket/nosocket": "^0.2"
+    },
+    "autoload": {
+        "psr-4": {
+            "NoSocket\\CodeIgniter\\": "src/"
+        }
+    }
+}

@@ -1,0 +1,107 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  php:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        php: ["8.1", "8.3", "8.4"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          extensions: json, pdo, pdo_sqlite
+      - run: find src public examples packages tests/php benchmarks -name '*.php' -print0 | xargs -0 -n1 php -l
+      - run: php tests/php/run.php
+
+  mysql:
+    runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_DATABASE: nosocket
+          MYSQL_ROOT_PASSWORD: root
+        ports: ["3306:3306"]
+        options: >-
+          --health-cmd "mysqladmin ping -h localhost -proot"
+          --health-interval 10s --health-timeout 5s --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.3"
+          extensions: pdo_mysql
+      - run: php tests/php/integration.php
+        env:
+          NOSOCKET_TEST_DSN: mysql:host=127.0.0.1;port=3306;dbname=nosocket
+          NOSOCKET_TEST_USER: root
+          NOSOCKET_TEST_PASSWORD: root
+
+  mariadb:
+    runs-on: ubuntu-latest
+    services:
+      mariadb:
+        image: mariadb:11.4
+        env:
+          MARIADB_DATABASE: nosocket
+          MARIADB_ROOT_PASSWORD: root
+        ports: ["3307:3306"]
+        options: >-
+          --health-cmd "healthcheck.sh --connect --innodb_initialized"
+          --health-interval 10s --health-timeout 5s --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.3"
+          extensions: pdo_mysql
+      - run: php tests/php/integration.php
+        env:
+          NOSOCKET_TEST_DSN: mysql:host=127.0.0.1;port=3307;dbname=nosocket
+          NOSOCKET_TEST_USER: root
+          NOSOCKET_TEST_PASSWORD: root
+
+  postgres:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: nosocket
+          POSTGRES_PASSWORD: postgres
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s --health-timeout 5s --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.3"
+          extensions: pdo_pgsql
+      - run: php tests/php/integration.php
+        env:
+          NOSOCKET_TEST_DSN: pgsql:host=127.0.0.1;port=5432;dbname=nosocket
+          NOSOCKET_TEST_USER: postgres
+          NOSOCKET_TEST_PASSWORD: postgres
+
+  browser:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.3"
+      - run: npm install
+      - run: npm test
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:e2e
