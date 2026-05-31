@@ -87,6 +87,7 @@ test("overlapping timer ticks send only one poll", async () => {
   };
   const first = client.tick();
   const second = client.tick();
+  await new Promise((resolve) => setImmediate(resolve));
   assert.equal(polls, 1);
   resolvePoll({ events: [], cursors: { orders: 0 }, has_more: false, resync_required: [] });
   await Promise.all([first, second]);
