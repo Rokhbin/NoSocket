@@ -14,6 +14,7 @@ final class Config
         public readonly int $rateLimit = 120,
         public readonly int $rateWindowSeconds = 60,
         public readonly int $tokenTtlSeconds = 3600,
+        public readonly float $cleanupProbability = 0.0,
     ) {
         foreach ([
             'eventTtlSeconds' => $eventTtlSeconds,
@@ -25,6 +26,9 @@ final class Config
             if ($value < 1) {
                 throw new InvalidArgumentException(sprintf('%s must be greater than zero.', $name));
             }
+        }
+        if ($cleanupProbability < 0.0 || $cleanupProbability > 1.0) {
+            throw new InvalidArgumentException('cleanupProbability must be between zero and one.');
         }
     }
 }

@@ -4,7 +4,7 @@
 
 [![PHP Version](https://img.shields.io/badge/PHP-%3E%3D8.1-777BB4?logo=php&logoColor=white)](composer.json)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-[![Tests](https://github.com/nosocket/nosocket/actions/workflows/ci.yml/badge.svg)](https://github.com/nosocket/nosocket/actions/workflows/ci.yml)
+[![Tests](https://github.com/Rokhbin/NoSocket/actions/workflows/ci.yml/badge.svg)](https://github.com/Rokhbin/NoSocket/actions/workflows/ci.yml)
 
 [فارسی](README.fa.md) | English
 
@@ -20,7 +20,7 @@ NoSocket is designed for applications where a delay of a few seconds is acceptab
 
 ## Key Features
 
-- Short-lived event log stored in MySQL, MariaDB, or PostgreSQL
+- Short-lived event log stored in MySQL, MariaDB, PostgreSQL, or SQLite
 - Independent revision cursor for each subscribed channel
 - Adaptive polling: normal, recently active, and short burst intervals
 - Single-tab leader election with Web Locks and a local-storage lease fallback
@@ -28,6 +28,7 @@ NoSocket is designed for applications where a delay of a few seconds is acceptab
 - Signed, scoped channel grants with refresh support
 - Retained replay, offline recovery, and explicit retention-gap resync
 - Database-backed rate limiting, shared cooldowns, jitter, and smart backoff
+- Batched emits, opt-in probabilistic cleanup, diagnostics, and metrics hooks
 - Vanilla PHP core with Laravel, Symfony, CodeIgniter 4, and WordPress adapters
 
 ## How It Works
@@ -69,6 +70,11 @@ Emit an event from PHP:
 
 ```php
 $nosocket->emit('orders', 'order.created', ['id' => 123]);
+
+$nosocket->emitBatch([
+    ['channel' => 'orders', 'event' => 'order.updated', 'payload' => ['id' => 123]],
+    ['channel' => 'dashboard', 'event' => 'metrics.updated', 'payload' => ['online' => 7]],
+]);
 ```
 
 Subscribe in the browser:
@@ -121,7 +127,7 @@ mysql -u app -p app_db < database/mysql/schema.sql
 
 Set `NOSOCKET_DSN`, `NOSOCKET_DB_USER`, `NOSOCKET_DB_PASSWORD`, and a random `NOSOCKET_SECRET` of at least 32 characters. Point a route at [`public/poll.php`](public/poll.php), issue scoped subscription tokens after your application authorizes channels, and load [`assets/js/nosocket.js`](assets/js/nosocket.js).
 
-See [Installation](docs/installation.md), [Architecture](docs/architecture.md), [API](docs/api.md), [Laravel](docs/laravel.md), [WordPress](docs/wordpress.md), and the [0.2 upgrade guide](docs/upgrade-0.2.md).
+See [Installation](docs/installation.md), [Architecture](docs/architecture.md), [API](docs/api.md), [Laravel](docs/laravel.md), [WordPress](docs/wordpress.md), [Observability](docs/observability.md), and the [0.2 upgrade guide](docs/upgrade-0.2.md).
 
 ## Comparison
 
@@ -161,7 +167,7 @@ npm run test:e2e
 php benchmarks/run.php
 ```
 
-The CI workflow verifies PHP, MySQL, MariaDB, PostgreSQL, JavaScript unit tests, and Playwright multi-tab behavior.
+The CI workflow verifies PHP, SQLite, MySQL, MariaDB, PostgreSQL, adapter fixtures, JavaScript unit tests, and Playwright multi-tab behavior.
 
 ## License
 

@@ -1,5 +1,15 @@
 # Roadmap
 
+## 0.3 (Implemented, Unreleased)
+
+- SQLite driver
+- Batched emit API
+- Optional probabilistic cleanup
+- Integration test fixtures for each framework adapter
+- Admin diagnostics UI
+- Documented pluggable event stores
+- Metrics hooks and callable OpenTelemetry bridge
+
 ## 0.2
 
 - Independent channel cursors and retention-gap resync
@@ -16,14 +26,4 @@
 
 ## Next
 
-- SQLite driver
-- Batched emit API
-- Optional probabilistic cleanup
-- Integration test fixtures for each framework adapter
-- Published Composer and npm packages
-
-## Later
-
-- Admin diagnostics UI
-- Pluggable event stores
-- Metrics hooks and OpenTelemetry bridge
+- Publish Composer and npm packages

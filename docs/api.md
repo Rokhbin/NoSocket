@@ -24,6 +24,21 @@ $signer = new NoSocket\Auth\SubscriptionSigner($_ENV['NOSOCKET_SECRET']);
 $token = $signer->issue(['orders', 'notifications'], 'user:42', 3600);
 ```
 
+### Emit A Batch
+
+`emitBatch()` validates every item first. `PdoEventStore` writes the batch in a transaction. Custom stores that only implement `EventStore` use a sequential fallback.
+
+```php
+$events = $nosocket->emitBatch([
+    ['channel' => 'orders', 'event' => 'order.updated', 'payload' => ['id' => 123]],
+    ['channel' => 'dashboard', 'event' => 'metrics.updated', 'payload' => ['online' => 7], 'ttl_seconds' => 300],
+]);
+```
+
+### Cleanup
+
+Run `$nosocket->cleanup()` from cron or a framework scheduler. As a fallback for hosting plans without reliable cron, configure `cleanupProbability` between `0.0` and `1.0`. The default is `0.0`, so event writes do not run cleanup queries unless explicitly enabled.
+
 ### Poll
 
 ```http
@@ -97,4 +112,4 @@ A fixed `token` remains supported for small examples. Supported options: `endpoi
 
 ## Database
 
-Use [`database/mysql/schema.sql`](../database/mysql/schema.sql) for MySQL/MariaDB or [`database/postgresql/schema.sql`](../database/postgresql/schema.sql) for PostgreSQL. SQLite remains a local testing convenience and is not officially supported in `0.2.0`.
+Use [`database/mysql/schema.sql`](../database/mysql/schema.sql) for MySQL/MariaDB, [`database/postgresql/schema.sql`](../database/postgresql/schema.sql) for PostgreSQL, or [`database/sqlite/schema.sql`](../database/sqlite/schema.sql) for SQLite.

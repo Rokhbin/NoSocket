@@ -23,6 +23,7 @@
         "test:integration": "php tests/php/integration.php"
     },
     "support": {
-        "issues": "https://github.com/nosocket/nosocket/issues"
+        "issues": "https://github.com/Rokhbin/NoSocket/issues",
+        "source": "https://github.com/Rokhbin/NoSocket"
     }
 }

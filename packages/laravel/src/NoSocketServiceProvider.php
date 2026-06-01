@@ -23,6 +23,7 @@ final class NoSocketServiceProvider extends ServiceProvider
             rateLimit: (int) config('nosocket.rate_limit'),
             rateWindowSeconds: (int) config('nosocket.rate_window_seconds'),
             tokenTtlSeconds: (int) config('nosocket.token_ttl_seconds'),
+            cleanupProbability: (float) config('nosocket.cleanup_probability'),
         ));
         $this->app->singleton(PdoEventStore::class, fn (): PdoEventStore => new PdoEventStore($this->pdo()));
         $this->app->singleton(PdoRateLimiter::class, fn (): PdoRateLimiter => new PdoRateLimiter($this->pdo()));

@@ -1,5 +1,16 @@
 # Changelog
 
+## [Unreleased]
+
+### Added
+
+- Official SQLite schema and CI integration coverage.
+- Transactional PDO `emitBatch()` with a compatibility fallback for custom stores.
+- Opt-in probabilistic cleanup for hosting plans without reliable cron.
+- Protected diagnostics UI, storage diagnostics API, metrics hooks, and a callable telemetry bridge.
+- CodeIgniter migration and CI adapter fixtures.
+- Registry release checklist.
+
 ## [0.2.0] - 2026-05-31
 
 ### Added

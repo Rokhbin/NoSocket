@@ -13,10 +13,12 @@
 | Component | Responsibility |
 | --- | --- |
 | `NoSocket\NoSocket` | Validates and emits events |
-| `PdoEventStore` | Appends, queries, and expires event rows |
+| `PdoEventStore` | Appends, batch-appends, queries, expires, and summarizes event rows |
 | `SubscriptionSigner` | Issues and verifies HMAC-SHA256 channel grants |
 | `PollService` | Enforces grants, limits result pages, and advances cursors |
 | `PdoRateLimiter` | Counts fixed-window requests without external infrastructure |
+
+`EventStore` remains the minimum extension point for custom storage. Stores can additionally implement `BatchEventStore` for atomic batch writes and `DiagnosticEventStore` for diagnostics snapshots. The included PDO store implements both.
 
 `nosocket_events` is indexed by `(channel, id)` and `expires_at`. Polls are cursor seeks, never full-table scans. Before cleanup deletes expired rows, it records the highest removed ID per channel in `nosocket_channel_watermarks`. A client cursor behind that watermark receives `resync_required`.
 

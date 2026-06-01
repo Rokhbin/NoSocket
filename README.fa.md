@@ -90,8 +90,7 @@ Content-Type: application/json
 - MySQL
 - MariaDB
 - PostgreSQL
-
-پشتیبانی از SQLite در roadmap قرار دارد.
+- SQLite
 
 ## نصب PHP خام
 
@@ -120,6 +119,20 @@ NOSOCKET_SECRET=a-random-secret-with-at-least-32-characters
 - [لاراول](docs/laravel.md)
 - [مقایسه با WebSocket، SSE، Pusher و Ably](docs/comparison.md)
 - [راهنمای مهاجرت نسخه ۰.۲](docs/upgrade-0.2.md)
+- [مانیتورینگ و diagnostics](docs/observability.md)
+
+## قابلیت‌های تکمیلی هسته
+
+برای ثبت چند رویداد در یک مرحله از `emitBatch()` استفاده کنید. در PDO این عملیات داخل transaction انجام می‌شود:
+
+```php
+$nosocket->emitBatch([
+    ['channel' => 'orders', 'event' => 'order.updated', 'payload' => ['id' => 123]],
+    ['channel' => 'dashboard', 'event' => 'metrics.updated', 'payload' => ['online' => 7]],
+]);
+```
+
+cleanup زمان‌بندی‌شده با cron همچنان روش اصلی است. در هاست‌هایی که cron قابل اتکا ندارند، می‌توان cleanup احتمالاتی را به‌صورت opt-in فعال کرد. همچنین صفحه diagnostics محافظت‌شده و metrics hook بدون وابستگی برای اتصال به ابزارهای مانیتورینگ وجود دارد.
 
 ## نمونه وردپرس
 
@@ -162,6 +175,7 @@ NoSocket::emit('orders', 'order.created', ['id' => $order->id]);
 
 ```bash
 composer test
+NOSOCKET_TEST_DSN=sqlite:/tmp/nosocket.sqlite composer test:integration
 npm test
 npm run test:e2e
 php benchmarks/run.php

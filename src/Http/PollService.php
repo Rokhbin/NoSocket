@@ -7,6 +7,8 @@ namespace NoSocket\Http;
 use InvalidArgumentException;
 use NoSocket\Auth\SubscriptionSigner;
 use NoSocket\Config;
+use NoSocket\Observability\MetricsHook;
+use NoSocket\Observability\NullMetricsHook;
 use NoSocket\RateLimit\RateLimiter;
 use NoSocket\Store\EventStore;
 
@@ -17,6 +19,7 @@ final class PollService
         private readonly SubscriptionSigner $signer,
         private readonly RateLimiter $rateLimiter,
         private readonly Config $config = new Config(),
+        private readonly MetricsHook $metrics = new NullMetricsHook(),
     ) {
     }
 
@@ -26,6 +29,7 @@ final class PollService
     public function poll(array $subscriptions, string $token, string $clientKey): PollResult
     {
         if (!$this->rateLimiter->hit($clientKey, $this->config->rateLimit, $this->config->rateWindowSeconds)) {
+            $this->recordMetric('nosocket.poll.rate_limited');
             throw new RateLimitExceeded('NoSocket polling rate limit exceeded.');
         }
 
@@ -74,6 +78,24 @@ final class PollService
             $cursors[$event->channel] = max($cursors[$event->channel], $event->id);
         }
 
+        $this->recordMetric('nosocket.poll.requests');
+        $this->recordMetric('nosocket.poll.events_returned', count($events));
+        if ($resyncRequired !== []) {
+            $this->recordMetric('nosocket.poll.resync_required', count($resyncRequired));
+        }
+
         return new PollResult($events, $cursors, $hasMore, $resyncRequired);
+    }
+
+    /**
+     * @param array<string, string|int|float|bool> $attributes
+     */
+    private function recordMetric(string $metric, int|float $value = 1, array $attributes = []): void
+    {
+        try {
+            $this->metrics->record($metric, $value, $attributes);
+        } catch (\Throwable) {
+            // Instrumentation must not break polling.
+        }
     }
 }

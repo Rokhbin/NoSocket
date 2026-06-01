@@ -13,3 +13,9 @@ $routes->post('nosocket/poll', '\NoSocket\CodeIgniter\Controllers\PollController
 ```
 
 The adapter expects CodeIgniter's PDO database driver. Use `service('nosocket')` style wiring or `NoSocket\CodeIgniter\Config\Services::nosocket()` to emit.
+
+Run the included migration from `packages/codeigniter/src/Database/Migrations` or apply the core SQL schema.
+
+## Adapter Fixtures
+
+CI runs `php tests/php/adapters.php` to verify package manifests, required wiring files, migrations, and the `subscriptions` poll contract for Laravel, WordPress, Symfony, and CodeIgniter 4. Framework applications should still run their own HTTP integration tests after installing an adapter.

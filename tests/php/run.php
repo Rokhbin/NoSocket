@@ -11,10 +11,12 @@ spl_autoload_register(static function (string $class): void {
 
 use NoSocket\Auth\SubscriptionSigner;
 use NoSocket\Config;
+use NoSocket\Diagnostics\DiagnosticsService;
 use NoSocket\Event;
 use NoSocket\Http\PollService;
 use NoSocket\Http\RateLimitExceeded;
 use NoSocket\NoSocket;
+use NoSocket\Observability\CallableMetricsHook;
 use NoSocket\RateLimit\NullRateLimiter;
 use NoSocket\RateLimit\PdoRateLimiter;
 use NoSocket\Store\EventStore;
@@ -139,14 +141,65 @@ try {
     check(true, 'poll rejects ungranted channels');
 }
 
+$batched = $client->emitBatch([
+    ['channel' => 'orders', 'event' => 'order.updated', 'payload' => ['id' => 123]],
+    ['channel' => 'dashboard', 'event' => 'metrics.updated', 'payload' => ['online' => 8]],
+]);
+check(count($batched) === 2 && count($store->events) === 5, 'batch emit falls back for custom event stores');
+
 $pdo = sqlite();
 $pdoStore = new PdoEventStore($pdo, 'sample_events', 'sample_watermarks');
 $pdoStore->append('orders', 'order.created', ['id' => 789], 60);
 check($pdoStore->latestCursors(['orders']) === ['orders' => 1], 'PDO store exposes per-channel latest cursors');
 check($pdoStore->after(['orders' => 0], 10)[0]->payload['id'] === 789, 'PDO store reads per-channel cursor pages');
+$pdoBatch = $pdoStore->appendBatch([
+    ['channel' => 'orders', 'event' => 'order.updated', 'payload' => ['id' => 789], 'ttl_seconds' => 60],
+    ['channel' => 'dashboard', 'event' => 'metrics.updated', 'payload' => ['online' => 9], 'ttl_seconds' => 60],
+]);
+check(count($pdoBatch) === 2 && $pdoBatch[1]->id === 3, 'PDO store appends a batch');
+check($pdoStore->diagnostics() === ['events' => 3, 'expired_events' => 0, 'channels' => 2, 'watermarks' => 0], 'PDO store reports diagnostics');
+check((new DiagnosticsService($pdoStore))->snapshot()['channels'] === 2, 'diagnostics service exposes store snapshot');
+try {
+    $pdoStore->appendBatch([
+        ['channel' => 'orders', 'event' => 'order.updated', 'payload' => ['id' => 790], 'ttl_seconds' => 60],
+        ['channel' => 'orders', 'event' => 'order.updated', 'payload' => ['invalid' => NAN], 'ttl_seconds' => 60],
+    ]);
+    check(false, 'PDO batch rolls back on failure');
+} catch (JsonException) {
+    check($pdoStore->diagnostics()['events'] === 3, 'PDO batch rolls back on failure');
+}
 $pdo->exec("UPDATE sample_events SET expires_at = '2000-01-01 00:00:00' WHERE id = 1");
 check($pdoStore->deleteExpired() === 1, 'PDO cleanup deletes expired events');
 check($pdoStore->watermarks(['orders']) === ['orders' => 1], 'PDO cleanup records channel watermark');
+check($pdoStore->diagnostics()['watermarks'] === 1, 'PDO diagnostics count watermarks');
+
+$metrics = [];
+$instrumented = new NoSocket(
+    $pdoStore,
+    new Config(cleanupProbability: 1.0),
+    new CallableMetricsHook(static function (string $metric, int|float $value, array $attributes) use (&$metrics): void {
+        $metrics[] = [$metric, $value, $attributes];
+    }),
+);
+$pdo->exec("UPDATE sample_events SET expires_at = '2000-01-01 00:00:00' WHERE id = 2");
+$instrumented->emit('orders', 'order.created', ['id' => 999], 60);
+check(count($metrics) === 2 && $metrics[0][0] === 'nosocket.events.emitted' && $metrics[1] === ['nosocket.events.cleaned', 1, []], 'emit can run probabilistic cleanup and metrics hooks');
+$failingMetrics = new CallableMetricsHook(static function (): void {
+    throw new RuntimeException('metrics unavailable');
+});
+check((new NoSocket($store, metrics: $failingMetrics))->emit('orders', 'order.created', ['id' => 1000])->id === 6, 'metrics failures do not interrupt emit');
+
+$failingCleanupStore = new class implements EventStore {
+    public function append(string $channel, string $event, array $payload, int $ttlSeconds): Event
+    {
+        return new Event(1, $channel, $event, $payload, gmdate(DATE_ATOM));
+    }
+    public function after(array $cursors, int $limit): array { return []; }
+    public function latestCursors(array $channels): array { return array_fill_keys($channels, 0); }
+    public function watermarks(array $channels): array { return array_fill_keys($channels, 0); }
+    public function deleteExpired(): int { throw new RuntimeException('cleanup unavailable'); }
+};
+check((new NoSocket($failingCleanupStore, new Config(cleanupProbability: 1.0)))->emit('orders', 'order.created', [])->id === 1, 'probabilistic cleanup failures do not interrupt emit');
 
 $limiter = new PdoRateLimiter($pdo, 'sample_limits');
 check($limiter->hit('browser:1', 1, 60), 'rate limiter allows request within limit');

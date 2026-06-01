@@ -11,7 +11,7 @@ use NoSocket\Event;
 use PDO;
 use RuntimeException;
 
-final class PdoEventStore implements EventStore
+final class PdoEventStore implements EventStore, BatchEventStore, DiagnosticEventStore
 {
     private readonly string $table;
     private readonly string $watermarksTable;
@@ -45,6 +45,39 @@ final class PdoEventStore implements EventStore
         ]);
 
         return new Event((int) $this->pdo->lastInsertId(), $channel, $event, $payload, $now->format(DATE_ATOM));
+    }
+
+    public function appendBatch(array $events): array
+    {
+        if ($events === []) {
+            return [];
+        }
+
+        $ownsTransaction = !$this->pdo->inTransaction();
+        if ($ownsTransaction) {
+            $this->pdo->beginTransaction();
+        }
+        try {
+            $appended = array_map(
+                fn (array $event): Event => $this->append(
+                    $event['channel'],
+                    $event['event'],
+                    $event['payload'],
+                    $event['ttl_seconds'],
+                ),
+                $events,
+            );
+            if ($ownsTransaction) {
+                $this->pdo->commit();
+            }
+
+            return $appended;
+        } catch (\Throwable $exception) {
+            if ($ownsTransaction && $this->pdo->inTransaction()) {
+                $this->pdo->rollBack();
+            }
+            throw $exception;
+        }
     }
 
     public function after(array $cursors, int $limit): array
@@ -143,6 +176,26 @@ final class PdoEventStore implements EventStore
             $this->pdo->rollBack();
             throw $exception;
         }
+    }
+
+    public function diagnostics(): array
+    {
+        $statement = $this->pdo->prepare(sprintf(
+            'SELECT COUNT(*) AS events,
+                    COALESCE(SUM(CASE WHEN expires_at <= ? THEN 1 ELSE 0 END), 0) AS expired_events,
+                    COUNT(DISTINCT channel) AS channels
+             FROM %s',
+            $this->table
+        ));
+        $statement->execute([gmdate('Y-m-d H:i:s')]);
+        $events = $statement->fetch(PDO::FETCH_ASSOC);
+
+        return [
+            'events' => (int) $events['events'],
+            'expired_events' => (int) $events['expired_events'],
+            'channels' => (int) $events['channels'],
+            'watermarks' => (int) $this->pdo->query(sprintf('SELECT COUNT(*) FROM %s', $this->watermarksTable))->fetchColumn(),
+        ];
     }
 
     private function validateTable(string $table): string
